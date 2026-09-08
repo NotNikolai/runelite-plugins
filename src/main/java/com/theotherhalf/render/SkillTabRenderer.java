@@ -4,6 +4,7 @@ import com.theotherhalf.TheOtherHalfConfig;
 import com.theotherhalf.model.LevelModel;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.Locale;
 import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
@@ -12,16 +13,18 @@ import net.runelite.api.Skill;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 
-/**
- * Writes the level numbers on the skills tab. Nothing here decides what the level is,
- * that is all LevelModel.
- */
+// writes the numbers. LevelModel decides what they are.
 public class SkillTabRenderer
 {
-	// no gameval names these, but the widget inspector confirms them on 1.12.38.
-	// 4 is the top left number, 5 is the bottom right one.
+	// no gameval for these. checked on 1.12.38: 4 is top left, 5 is bottom right.
 	private static final int CHILD_CURRENT_LEVEL = 4;
 	private static final int CHILD_BASE_LEVEL = 5;
+
+	// tooltip splits labels and numbers into two text children
+	private static final int TOOLTIP_LABELS = 2;
+	private static final int TOOLTIP_VALUES = 3;
+	private static final String LINE_BREAK = "<br>";
+	private static final String XP_LABEL = " XP:";
 
 	private static final Map<Skill, Integer> SKILL_WIDGETS = buildSkillWidgets();
 
@@ -31,8 +34,7 @@ public class SkillTabRenderer
 	@Inject
 	private TheOtherHalfConfig config;
 
-	// queueChangedSkill rebuilds the level text but not its colour, so we have to
-	// remember what each one looked like before we touched it
+	// queueChangedSkill rebuilds the text but not the colour, so remember it ourselves
 	private final Map<Skill, Integer> vanillaColour = new EnumMap<>(Skill.class);
 
 	public void render(LevelModel model)
@@ -43,7 +45,7 @@ public class SkillTabRenderer
 		for (Map.Entry<Skill, Integer> entry : SKILL_WIDGETS.entrySet())
 		{
 			Skill skill = entry.getKey();
-			if (!isEnabled(skill))
+			if (!isSkillEnabled(skill))
 			{
 				continue;
 			}
@@ -59,15 +61,14 @@ public class SkillTabRenderer
 			LevelModel.Result result = model.forSkill(skill, client.getSkillExperience(skill));
 			if (!result.isSecondHalf())
 			{
-				// first half or handed back, the game's own number is already right
+				// game's number is already right
 				continue;
 			}
 
 			String text = String.valueOf(result.getLevel());
 			write(widget.getChild(CHILD_BASE_LEVEL), text, tint, colour);
 
-			// the top number for these two is live hp and prayer points, not a level.
-			// rewriting it would hide something you need, so never do it.
+			// top number here is live hp and prayer points, not a level. never touch it.
 			if (skill == Skill.HITPOINTS || skill == Skill.PRAYER)
 			{
 				continue;
@@ -87,17 +88,138 @@ public class SkillTabRenderer
 		for (Skill skill : SKILL_WIDGETS.keySet())
 		{
 			int xp = client.getSkillExperience(skill);
-			total += isEnabled(skill)
+			total += isSkillEnabled(skill)
 				? model.forSkill(skill, xp).getLevel()
 				: Experience.getLevelForXp(xp);
 		}
 		return "Total level: " + total;
 	}
 
-	/**
-	 * Puts the vanilla colours back. Call this before handing the tab over on shutdown
-	 * or when the tint gets switched off, because a skill redraw will not do it for you.
-	 */
+	// labels in one child, values in another, newline separated.
+	// a maxed skill only has one line, so never assume three.
+	public void renderTooltip(LevelModel model)
+	{
+		boolean showReal = config.showRealLevel();
+		boolean runXp = config.tooltipSecondHalfXp();
+		if (!showReal && !runXp)
+		{
+			return;
+		}
+
+		Widget tip = client.getWidget(InterfaceID.Stats.TOOLTIP);
+		if (tip == null || tip.isHidden())
+		{
+			return;
+		}
+
+		Widget[] children = tip.getDynamicChildren();
+		if (children == null || children.length <= TOOLTIP_VALUES)
+		{
+			return;
+		}
+
+		Widget labels = children[TOOLTIP_LABELS];
+		Widget values = children[TOOLTIP_VALUES];
+		if (labels == null || values == null || labels.getText() == null || values.getText() == null)
+		{
+			return;
+		}
+
+		Skill skill = skillFromLabel(labels.getText());
+		if (skill == null || !isSkillEnabled(skill))
+		{
+			return;
+		}
+
+		int xp = client.getSkillExperience(skill);
+		LevelModel.Result result = model.forSkill(skill, xp);
+		if (!result.isSecondHalf())
+		{
+			// game's tooltip is already honest
+			return;
+		}
+
+		if (runXp)
+		{
+			writeRunXp(values, model, result, xp);
+		}
+
+		if (showReal)
+		{
+			writeRealLevel(labels, Experience.getLevelForXp(xp));
+		}
+	}
+
+	private void writeRunXp(Widget values, LevelModel model, LevelModel.Result result, int xp)
+	{
+		String[] lines = values.getText().split(LINE_BREAK);
+		if (lines.length < 3)
+		{
+			return;
+		}
+
+		// gap to the next level is the same either way, only the total shifts
+		int into = model.xpIntoRun(xp);
+		int remaining = result.getXpAtNextLevel() - xp;
+
+		String text = format(into) + LINE_BREAK + format(into + remaining) + LINE_BREAK + format(remaining);
+		if (!text.equals(values.getText()))
+		{
+			values.setText(text);
+		}
+	}
+
+	private void writeRealLevel(Widget labels, int realLevel)
+	{
+		String text = labels.getText();
+		int cut = text.indexOf(XP_LABEL);
+		if (cut <= 0)
+		{
+			return;
+		}
+
+		// runs every tick while the tooltip is up, don't staple it on twice
+		String name = text.substring(0, cut);
+		if (name.endsWith(")"))
+		{
+			return;
+		}
+
+		labels.setText(name + " (" + realLevel + ")" + text.substring(cut));
+	}
+
+	private static Skill skillFromLabel(String text)
+	{
+		int cut = text.indexOf(XP_LABEL);
+		if (cut <= 0)
+		{
+			return null;
+		}
+
+		String name = text.substring(0, cut);
+		// drop our own suffix if it is already there
+		int bracket = name.indexOf(" (");
+		if (bracket > 0)
+		{
+			name = name.substring(0, bracket);
+		}
+
+		try
+		{
+			return Skill.valueOf(name.toUpperCase(Locale.ROOT));
+		}
+		catch (IllegalArgumentException e)
+		{
+			return null;
+		}
+	}
+
+	private static String format(int value)
+	{
+		return String.format("%,d", value);
+	}
+
+	// a skill redraw won't put the colour back, so do it here
 	public void restore()
 	{
 		for (Map.Entry<Skill, Integer> entry : vanillaColour.entrySet())
@@ -116,6 +238,12 @@ public class SkillTabRenderer
 		vanillaColour.clear();
 	}
 
+	// widgets gone under us, drop the refs without touching them
+	public void reset()
+	{
+		vanillaColour.clear();
+	}
+
 	private void rememberColour(Skill skill, Widget widget, int ourColour)
 	{
 		if (vanillaColour.containsKey(skill))
@@ -124,7 +252,7 @@ public class SkillTabRenderer
 		}
 
 		Widget base = widget.getChild(CHILD_BASE_LEVEL);
-		// if it already matches ours there is nothing original left to save
+		// already ours, nothing original left to save
 		if (base != null && base.getTextColor() != ourColour)
 		{
 			vanillaColour.put(skill, base.getTextColor());
@@ -157,7 +285,7 @@ public class SkillTabRenderer
 		}
 	}
 
-	private boolean isEnabled(Skill skill)
+	public boolean isSkillEnabled(Skill skill)
 	{
 		switch (skill)
 		{
@@ -212,6 +340,12 @@ public class SkillTabRenderer
 			default:
 				return false;
 		}
+	}
+
+	// BarRenderer draws into the same tiles
+	static Map<Skill, Integer> skillWidgets()
+	{
+		return SKILL_WIDGETS;
 	}
 
 	private static Map<Skill, Integer> buildSkillWidgets()

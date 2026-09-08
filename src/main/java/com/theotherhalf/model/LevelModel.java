@@ -3,9 +3,7 @@ package com.theotherhalf.model;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 
-/**
- * Turns real xp into the level we want to show. Pure maths, no client, no widgets.
- */
+// real xp in, displayed level out. no client, no widgets, so it unit tests.
 public final class LevelModel
 {
 	public static final int MAX_XP = 200_000_000;
@@ -15,7 +13,7 @@ public final class LevelModel
 	private static final int MAX_THRESHOLD = 99;
 	private static final int XP_99 = Experience.getXpForLevel(99);
 
-	// hp has no level 1, a fresh account starts here
+	// hp has no level 1
 	private static final int HITPOINTS_START = 10;
 
 	private final boolean enabled;
@@ -29,9 +27,8 @@ public final class LevelModel
 		this.threshold = Math.max(MIN_THRESHOLD, Math.min(MAX_THRESHOLD, threshold));
 		this.thresholdXp = Experience.getXpForLevel(this.threshold);
 
-		// the run back to 99 is shorter than the run up to the threshold, so start it
-		// part filled and every level lands on the same xp it did the first time.
-		// 75 at level 92. below 92 it comes out negative, so the run just overshoots instead.
+		// run two is shorter, so start it part filled and every level lands on the
+		// xp it did first time. 75 at level 92. negative below 92, so it overshoots.
 		this.seed = Math.max(0, this.thresholdXp - (XP_99 - this.thresholdXp));
 	}
 
@@ -49,7 +46,7 @@ public final class LevelModel
 	{
 		int xp = Math.max(0, Math.min(MAX_XP, totalXp));
 
-		// first half, or turned off, the game's own number is already right
+		// first half or turned off, the game's number is already right
 		if (!enabled || xp < thresholdXp)
 		{
 			return real(xp);
@@ -69,10 +66,15 @@ public final class LevelModel
 		return forSkill(skill, totalXp).getLevel();
 	}
 
-	/**
-	 * The level the second run has reached ignoring the handback, so the celebration at
-	 * real 99 knows it is really the final level. At exactly xp(99) this is the threshold.
-	 */
+	// what the tooltip shows when it counts the run instead of real xp
+	public int xpIntoRun(int totalXp)
+	{
+		int xp = Math.max(0, Math.min(MAX_XP, totalXp));
+		return xp < thresholdXp ? xp : xp - thresholdXp + seed;
+	}
+
+	// ignores the handback so the celebration knows the last level was the last one.
+	// at exactly xp(99) this is the threshold.
 	public int secondHalfLevel(Skill skill, int totalXp)
 	{
 		int xp = Math.max(0, Math.min(MAX_XP, totalXp));
@@ -140,10 +142,7 @@ public final class LevelModel
 			return xpAtNextLevel;
 		}
 
-		/**
-		 * True when this level is a relabel of real xp, ie the only case where we
-		 * should be writing anything to the skills tab.
-		 */
+		// the only case where we write to the tab at all
 		public boolean isSecondHalf()
 		{
 			return secondHalf;

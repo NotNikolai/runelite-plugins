@@ -207,6 +207,77 @@ public class LevelModelTest
 	}
 
 	@Test
+	public void everyThresholdClimbsWithinItsRun()
+	{
+		// the reset itself drops you back to 1 on purpose, that is the whole feature.
+		// what must never happen is going backwards once a run is under way.
+		for (int t = 2; t <= 99; t++)
+		{
+			LevelModel m = new LevelModel(true, t);
+			int thresholdXp = Experience.getXpForLevel(t);
+
+			int last = 0;
+			for (int xp = 0; xp < thresholdXp; xp += 997)
+			{
+				int shown = m.displayedLevel(Skill.WOODCUTTING, xp);
+				assertTrue("threshold " + t + " went backwards in the first half", shown >= last);
+				last = shown;
+			}
+
+			last = 0;
+			for (int xp = thresholdXp; xp < XP_99; xp += 9_973)
+			{
+				int shown = m.displayedLevel(Skill.WOODCUTTING, xp);
+				assertTrue("threshold " + t + " went backwards in the second run", shown >= last);
+				last = shown;
+			}
+		}
+	}
+
+	@Test
+	public void theResetIsTheOnlyDrop()
+	{
+		// one xp either side of the threshold is the single point where a level goes down
+		for (int t : new int[]{28, 66, 80, 92})
+		{
+			LevelModel m = new LevelModel(true, t);
+			int thresholdXp = Experience.getXpForLevel(t);
+
+			assertEquals("threshold " + t, t - 1, m.displayedLevel(Skill.WOODCUTTING, thresholdXp - 1));
+			assertEquals("threshold " + t, 1, m.displayedLevel(Skill.WOODCUTTING, thresholdXp));
+		}
+	}
+
+	@Test
+	public void everyThresholdStaysInSaneBounds()
+	{
+		for (int t = 2; t <= 99; t++)
+		{
+			LevelModel m = new LevelModel(true, t);
+
+			for (int xp = 0; xp <= LevelModel.MAX_XP; xp += 1_000_003)
+			{
+				int shown = m.displayedLevel(Skill.WOODCUTTING, xp);
+				assertTrue("threshold " + t + " gave " + shown + " at xp " + xp, shown >= 1 && shown <= 126);
+
+				int hp = m.displayedLevel(Skill.HITPOINTS, xp);
+				assertTrue("hp fell under 10 at threshold " + t, hp >= 10 || xp < Experience.getXpForLevel(t));
+			}
+		}
+	}
+
+	@Test
+	public void belowNinetyTwoTheRunOvershoots()
+	{
+		// the second run is the longer one here, so it climbs past the reset level
+		// before real 99 arrives. expected, and why 92 is the default.
+		LevelModel m = new LevelModel(true, 66);
+		assertEquals(0, m.getSeed());
+		assertEquals(1, m.displayedLevel(Skill.WOODCUTTING, Experience.getXpForLevel(66)));
+		assertTrue(m.displayedLevel(Skill.WOODCUTTING, XP_99 - 1) > 66);
+	}
+
+	@Test
 	public void everyLevelInTheSecondRunIsReachable()
 	{
 		// 91 level ups is the entire product claim, so prove it

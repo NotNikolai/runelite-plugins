@@ -13,6 +13,21 @@ public interface TheOtherHalfConfig extends Config
 	// never change this, it prefixes every saved setting
 	String GROUP = "the-other-half";
 
+
+	@ConfigSection(
+		name = "Progress bars",
+		description = "Bars along the bottom of every skill tile",
+		position = 18
+	)
+	String BARS = "bars";
+
+	@ConfigSection(
+		name = "Celebration",
+		description = "What happens when a second-half level lands",
+		position = 19
+	)
+	String CELEBRATION = "celebration";
+
 	@ConfigSection(
 		name = "Combat",
 		description = "Which combat skills get second-half levels",
@@ -69,8 +84,161 @@ public interface TheOtherHalfConfig extends Config
 	)
 	default Color secondHalfColour()
 	{
-		// vanilla is ffff00, this is close enough to look at home but still tells them apart
+		// vanilla is ffff00, close enough to look at home but still tell apart
 		return new Color(0xFFD54A);
+	}
+
+	@ConfigItem(
+		keyName = "showRealLevel",
+		name = "Show real level on hover",
+		description = "Puts your real level in the skill's hover tooltip, so you can always check what a relabelled level really is.",
+		position = 6
+	)
+	default boolean showRealLevel()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "tooltipSecondHalfXp",
+		name = "Second-half xp on hover",
+		description = "Makes the hover tooltip count xp through the second run instead of your real total, so it lines up with the level on the tab. Off means the tooltip keeps telling you the truth.",
+		position = 7
+	)
+	default boolean tooltipSecondHalfXp()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "levelUpMessage",
+		name = "Level up message",
+		description = "Posts a chat message when a second-half level lands. The game will not do it for you, your real level has not moved.",
+		position = 8
+	)
+	default boolean levelUpMessage()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "levelUpColour",
+		name = "Level up message colour",
+		position = 9,
+		description = "Colour of the level up chat message."
+	)
+	default Color levelUpColour()
+	{
+		return new Color(0x00A000);
+	}
+
+	@ConfigItem(
+		keyName = "showProgressBars",
+		name = "Progress bars",
+		description = "Adds progress bars to every skill on the tab. Turn off the Skills Tab Progress Bars plugin if you use it, or you will get two sets.",
+		section = BARS,
+		position = 1
+	)
+	default boolean showProgressBars()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "barHeight",
+		name = "Bar height",
+		description = "How tall the bars are, in pixels.",
+		section = BARS,
+		position = 2
+	)
+	@Range(min = 1, max = 6)
+	default int barHeight()
+	{
+		return 2;
+	}
+
+	@ConfigItem(
+		keyName = "barColour",
+		name = "Bar colour",
+		description = "Colour of the filled part.",
+		section = BARS,
+		position = 3
+	)
+	default Color barColour()
+	{
+		return new Color(0x33CC33);
+	}
+
+	@ConfigItem(
+		keyName = "barBackgroundColour",
+		name = "Bar background",
+		description = "Colour of the unfilled part.",
+		section = BARS,
+		position = 4
+	)
+	default Color barBackgroundColour()
+	{
+		return new Color(0x1E1E1E);
+	}
+
+	@ConfigItem(
+		keyName = "indentToMatchCorners",
+		name = "Indent to match corners",
+		description = "Pulls the bars in a few pixels so they sit inside the rounded corners of the tile.",
+		section = BARS,
+		position = 5
+	)
+	default boolean indentToMatchCorners()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "levelUpFireworks",
+		name = "Fireworks",
+		description = "Sets off the game's own level up fireworks over your character. Every tenth level, and the last one of the run, get the 99 ones instead.",
+		section = CELEBRATION,
+		position = 1
+	)
+	default boolean levelUpFireworks()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "levelUpSound",
+		name = "Sound",
+		description = "Plays a sound when a second-half level lands.",
+		section = CELEBRATION,
+		position = 2
+	)
+	default boolean levelUpSound()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "bigMilestonesOnly",
+		name = "Only on milestones",
+		description = "Limits the sound and fireworks to every tenth level plus the final one. The chat message still fires every level.",
+		section = CELEBRATION,
+		position = 4
+	)
+	default boolean bigMilestonesOnly()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "suppressInCombat",
+		name = "Not in combat",
+		description = "Skips the sound and fireworks while you are fighting or inside an instance.",
+		section = CELEBRATION,
+		position = 5
+	)
+	default boolean suppressInCombat()
+	{
+		return true;
 	}
 
 	@ConfigItem(
