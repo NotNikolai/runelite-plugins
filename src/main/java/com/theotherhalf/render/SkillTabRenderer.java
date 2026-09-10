@@ -26,6 +26,9 @@ public class SkillTabRenderer
 	private static final String LINE_BREAK = "<br>";
 	private static final String XP_LABEL = " XP:";
 
+	// we never saw the original, so leave the colour alone
+	private static final int NO_COLOUR = -1;
+
 	private static final Map<Skill, Integer> SKILL_WIDGETS = buildSkillWidgets();
 
 	@Inject
@@ -37,10 +40,11 @@ public class SkillTabRenderer
 	// queueChangedSkill rebuilds the text but not the colour, so remember it ourselves
 	private final Map<Skill, Integer> vanillaColour = new EnumMap<>(Skill.class);
 
-	public void render(LevelModel model)
+	public void render(LevelModel model, Skill hovered)
 	{
-		boolean tint = config.tintSecondHalfLevels();
-		int colour = config.secondHalfColour().getRGB() & 0xFFFFFF;
+		boolean tintOn = config.tintSecondHalfLevels();
+		boolean revealOnHover = config.showRealLevel();
+		int tintColour = config.secondHalfColour().getRGB() & 0xFFFFFF;
 
 		for (Map.Entry<Skill, Integer> entry : SKILL_WIDGETS.entrySet())
 		{
@@ -56,17 +60,26 @@ public class SkillTabRenderer
 				continue;
 			}
 
-			rememberColour(skill, widget, colour);
+			rememberColour(skill, widget, tintColour);
 
-			LevelModel.Result result = model.forSkill(skill, client.getSkillExperience(skill));
+			int xp = client.getSkillExperience(skill);
+			LevelModel.Result result = model.forSkill(skill, xp);
 			if (!result.isSecondHalf())
 			{
 				// game's number is already right
 				continue;
 			}
 
-			String text = String.valueOf(result.getLevel());
-			write(widget.getChild(CHILD_BASE_LEVEL), text, tint, colour);
+			// hovering a relabelled skill shows what it really is
+			boolean reveal = revealOnHover && skill == hovered;
+			String text = String.valueOf(reveal ? model.realFor(xp).getLevel() : result.getLevel());
+
+			// while revealing, or with the tint off, put the original colour back
+			int colour = tintOn && !reveal
+				? tintColour
+				: vanillaColour.getOrDefault(skill, NO_COLOUR);
+
+			write(widget.getChild(CHILD_BASE_LEVEL), text, colour);
 
 			// top number here is live hp and prayer points, not a level. never touch it.
 			if (skill == Skill.HITPOINTS || skill == Skill.PRAYER)
@@ -77,9 +90,28 @@ public class SkillTabRenderer
 			// leave it alone while a boost is up so the boost stays visible
 			if (client.getBoostedSkillLevel(skill) == client.getRealSkillLevel(skill))
 			{
-				write(widget.getChild(CHILD_CURRENT_LEVEL), text, tint, colour);
+				write(widget.getChild(CHILD_CURRENT_LEVEL), text, colour);
 			}
 		}
+	}
+
+	// which skill the mouse is over, read off the tooltip. null if none.
+	public Skill hoveredSkill()
+	{
+		Widget tip = client.getWidget(InterfaceID.Stats.TOOLTIP);
+		if (tip == null || tip.isHidden())
+		{
+			return null;
+		}
+
+		Widget[] children = tip.getDynamicChildren();
+		if (children == null || children.length <= TOOLTIP_VALUES)
+		{
+			return null;
+		}
+
+		Widget labels = children[TOOLTIP_LABELS];
+		return labels == null || labels.getText() == null ? null : skillFromLabel(labels.getText());
 	}
 
 	public String totalLevelText(LevelModel model)
@@ -99,9 +131,7 @@ public class SkillTabRenderer
 	// a maxed skill only has one line, so never assume three.
 	public void renderTooltip(LevelModel model)
 	{
-		boolean showReal = config.showRealLevel();
-		boolean runXp = config.tooltipSecondHalfXp();
-		if (!showReal && !runXp)
+		if (!config.tooltipSecondHalfXp())
 		{
 			return;
 		}
@@ -139,15 +169,7 @@ public class SkillTabRenderer
 			return;
 		}
 
-		if (runXp)
-		{
-			writeRunXp(values, model, result, xp);
-		}
-
-		if (showReal)
-		{
-			writeRealLevel(labels, Experience.getLevelForXp(xp));
-		}
+		writeRunXp(values, model, result, xp);
 	}
 
 	private void writeRunXp(Widget values, LevelModel model, LevelModel.Result result, int xp)
@@ -169,25 +191,6 @@ public class SkillTabRenderer
 		}
 	}
 
-	private void writeRealLevel(Widget labels, int realLevel)
-	{
-		String text = labels.getText();
-		int cut = text.indexOf(XP_LABEL);
-		if (cut <= 0)
-		{
-			return;
-		}
-
-		// runs every tick while the tooltip is up, don't staple it on twice
-		String name = text.substring(0, cut);
-		if (name.endsWith(")"))
-		{
-			return;
-		}
-
-		labels.setText(name + " (" + realLevel + ")" + text.substring(cut));
-	}
-
 	private static Skill skillFromLabel(String text)
 	{
 		int cut = text.indexOf(XP_LABEL);
@@ -196,17 +199,9 @@ public class SkillTabRenderer
 			return null;
 		}
 
-		String name = text.substring(0, cut);
-		// drop our own suffix if it is already there
-		int bracket = name.indexOf(" (");
-		if (bracket > 0)
-		{
-			name = name.substring(0, bracket);
-		}
-
 		try
 		{
-			return Skill.valueOf(name.toUpperCase(Locale.ROOT));
+			return Skill.valueOf(text.substring(0, cut).toUpperCase(Locale.ROOT));
 		}
 		catch (IllegalArgumentException e)
 		{
@@ -267,7 +262,7 @@ public class SkillTabRenderer
 		}
 	}
 
-	private void write(Widget widget, String text, boolean tint, int colour)
+	private void write(Widget widget, String text, int colour)
 	{
 		if (widget == null)
 		{
@@ -279,7 +274,7 @@ public class SkillTabRenderer
 			widget.setText(text);
 		}
 
-		if (tint && widget.getTextColor() != colour)
+		if (colour != NO_COLOUR && widget.getTextColor() != colour)
 		{
 			widget.setTextColor(colour);
 		}

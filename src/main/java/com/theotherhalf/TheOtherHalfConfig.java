@@ -23,29 +23,29 @@ public interface TheOtherHalfConfig extends Config
 
 	@ConfigSection(
 		name = "Celebration",
-		description = "What happens when a second-half level lands",
+		description = "What happens when an other half level lands",
 		position = 19
 	)
 	String CELEBRATION = "celebration";
 
 	@ConfigSection(
 		name = "Combat",
-		description = "Which combat skills get second-half levels",
+		description = "Which combat skills get other half levels",
 		position = 20
 	)
 	String COMBAT = "combat";
 
 	@ConfigSection(
 		name = "Skilling",
-		description = "Which non combat skills get second-half levels",
+		description = "Which non combat skills get other half levels",
 		position = 21
 	)
 	String SKILLING = "skilling";
 
 	@ConfigItem(
 		keyName = "secondHalfLevels",
-		name = "Second-half levels",
-		description = "Restart the skills tab at level 1 once a skill passes the halfway point to 99, so the back half of the grind gives you 91 level ups instead of 7.",
+		name = "Other half levels",
+		description = "Restart the skills tab at level 1 once a skill passes the halfway point to 99, so the other half of the grind gives you 91 level ups instead of 7.",
 		position = 0
 	)
 	default boolean secondHalfLevels()
@@ -67,8 +67,8 @@ public interface TheOtherHalfConfig extends Config
 
 	@ConfigItem(
 		keyName = "tintSecondHalfLevels",
-		name = "Tint second-half levels",
-		description = "Shades levels that are a relabel of real xp, so you can tell a second-half 41 from a real one.",
+		name = "Tint other half levels",
+		description = "Shades levels that are a relabel of real xp, so you can tell an other half 41 from a real one.",
 		position = 3
 	)
 	default boolean tintSecondHalfLevels()
@@ -78,7 +78,7 @@ public interface TheOtherHalfConfig extends Config
 
 	@ConfigItem(
 		keyName = "secondHalfColour",
-		name = "Second-half colour",
+		name = "Other half colour",
 		description = "Colour for tinted levels. Vanilla is bright yellow, so a different hue reads better than a different brightness.",
 		position = 4
 	)
@@ -91,7 +91,7 @@ public interface TheOtherHalfConfig extends Config
 	@ConfigItem(
 		keyName = "showRealLevel",
 		name = "Show real level on hover",
-		description = "Puts your real level in the skill's hover tooltip, so you can always check what a relabelled level really is.",
+		description = "Hovering a skill shows the real level on the tile and fills its bar towards the real goal, so you can always check what a relabelled level really is.",
 		position = 6
 	)
 	default boolean showRealLevel()
@@ -101,8 +101,8 @@ public interface TheOtherHalfConfig extends Config
 
 	@ConfigItem(
 		keyName = "tooltipSecondHalfXp",
-		name = "Second-half xp on hover",
-		description = "Makes the hover tooltip count xp through the second run instead of your real total, so it lines up with the level on the tab. Off means the tooltip keeps telling you the truth.",
+		name = "Other half xp on hover",
+		description = "Counts xp through the other half instead of your real total, so the tooltip lines up with the level on the tab. Off means it keeps telling you the truth.",
 		position = 7
 	)
 	default boolean tooltipSecondHalfXp()
@@ -111,37 +111,27 @@ public interface TheOtherHalfConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "levelUpMessage",
-		name = "Level up message",
-		description = "Posts a chat message when a second-half level lands. The game will not do it for you, your real level has not moved.",
-		position = 8
-	)
-	default boolean levelUpMessage()
-	{
-		return true;
-	}
-
-	@ConfigItem(
-		keyName = "levelUpColour",
-		name = "Level up message colour",
-		position = 9,
-		description = "Colour of the level up chat message."
-	)
-	default Color levelUpColour()
-	{
-		return new Color(0x00A000);
-	}
-
-	@ConfigItem(
 		keyName = "showProgressBars",
 		name = "Progress bars",
-		description = "Adds progress bars to every skill on the tab. Turn off the Skills Tab Progress Bars plugin if you use it, or you will get two sets.",
+		description = "Adds progress bars to every skill on the tab.",
 		section = BARS,
 		position = 1
 	)
 	default boolean showProgressBars()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "barGoal",
+		name = "Bar goal",
+		description = "Whether a bar fills towards the level shown on the tile or towards your real next level. Hovering a skill shows the real one either way.",
+		section = BARS,
+		position = 2
+	)
+	default BarGoal barGoal()
+	{
+		return BarGoal.SHOWN;
 	}
 
 	@ConfigItem(
@@ -194,11 +184,35 @@ public interface TheOtherHalfConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "levelUpFireworks",
-		name = "Fireworks",
-		description = "Sets off the game's own level up fireworks over your character. Every tenth level, and the last one of the run, get the 99 ones instead.",
+		keyName = "levelUpMessage",
+		name = "Chat message",
+		description = "Posts a chat message when an other half level lands. The game will not do it for you, your real level has not moved.",
 		section = CELEBRATION,
 		position = 1
+	)
+	default boolean levelUpMessage()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "levelUpColour",
+		name = "Chat message colour",
+		description = "Colour of the level up chat message.",
+		section = CELEBRATION,
+		position = 2
+	)
+	default Color levelUpColour()
+	{
+		return new Color(0x00A000);
+	}
+
+	@ConfigItem(
+		keyName = "levelUpFireworks",
+		name = "Fireworks",
+		description = "Sets off the game's own level up fireworks over your character. Every tenth level, and the last one, get the 99 ones instead.",
+		section = CELEBRATION,
+		position = 3
 	)
 	default boolean levelUpFireworks()
 	{
@@ -208,9 +222,9 @@ public interface TheOtherHalfConfig extends Config
 	@ConfigItem(
 		keyName = "levelUpSound",
 		name = "Sound",
-		description = "Plays a sound when a second-half level lands.",
+		description = "Plays a sound when an other half level lands.",
 		section = CELEBRATION,
-		position = 2
+		position = 4
 	)
 	default boolean levelUpSound()
 	{
@@ -222,7 +236,7 @@ public interface TheOtherHalfConfig extends Config
 		name = "Only on milestones",
 		description = "Limits the sound and fireworks to every tenth level plus the final one. The chat message still fires every level.",
 		section = CELEBRATION,
-		position = 4
+		position = 5
 	)
 	default boolean bigMilestonesOnly()
 	{
@@ -234,7 +248,7 @@ public interface TheOtherHalfConfig extends Config
 		name = "Not in combat",
 		description = "Skips the sound and fireworks while you are fighting or inside an instance.",
 		section = CELEBRATION,
-		position = 5
+		position = 6
 	)
 	default boolean suppressInCombat()
 	{

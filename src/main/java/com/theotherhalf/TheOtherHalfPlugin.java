@@ -166,12 +166,15 @@ public class TheOtherHalfPlugin extends Plugin
 
 		try
 		{
-			renderer.render(current);
+			// work it out once, both renderers reveal the real level for it
+			Skill hovered = renderer.hoveredSkill();
+
+			renderer.render(current, hovered);
 			renderer.renderTooltip(current);
 
 			if (config.showProgressBars())
 			{
-				bars.render(current);
+				bars.render(current, hovered);
 			}
 		}
 		catch (Exception e)

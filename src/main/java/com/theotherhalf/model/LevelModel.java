@@ -85,6 +85,12 @@ public final class LevelModel
 		return levelFor(skill, xp - thresholdXp + seed);
 	}
 
+	// real level and its xp window, untouched by the reset
+	public Result realFor(int totalXp)
+	{
+		return real(Math.max(0, Math.min(MAX_XP, totalXp)));
+	}
+
 	private Result real(int xp)
 	{
 		int level = Experience.getLevelForXp(xp);

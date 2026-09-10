@@ -1,5 +1,6 @@
 package com.theotherhalf.render;
 
+import com.theotherhalf.BarGoal;
 import com.theotherhalf.TheOtherHalfConfig;
 import com.theotherhalf.model.LevelModel;
 import java.util.EnumMap;
@@ -30,12 +31,14 @@ public class BarRenderer
 	// [background, fill] per skill
 	private final Map<Skill, Widget[]> bars = new EnumMap<>(Skill.class);
 
-	public void render(LevelModel model)
+	public void render(LevelModel model, Skill hovered)
 	{
 		int height = config.barHeight();
 		int indent = config.indentToMatchCorners() ? INDENT : 0;
 		int fillColour = config.barColour().getRGB() & 0xFFFFFF;
 		int backColour = config.barBackgroundColour().getRGB() & 0xFFFFFF;
+		boolean realGoal = config.barGoal() == BarGoal.REAL;
+		boolean revealOnHover = config.showRealLevel();
 
 		for (Map.Entry<Skill, Integer> entry : SkillTabRenderer.skillWidgets().entrySet())
 		{
@@ -54,7 +57,11 @@ public class BarRenderer
 			}
 
 			int xp = client.getSkillExperience(skill);
-			float progress = model.forSkill(skill, xp).progress(xp);
+
+			// hovering shows the real goal even when the bar tracks the shown one
+			boolean useReal = realGoal || (revealOnHover && skill == hovered);
+			LevelModel.Result result = useReal ? model.realFor(xp) : model.forSkill(skill, xp);
+			float progress = result.progress(xp);
 
 			int full = Math.max(0, parent.getWidth() - indent * 2);
 			int y = barTop(parent, height);
